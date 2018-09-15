@@ -25,6 +25,7 @@ class NatureRemoAircon {
 
     this.service = null;
     this.record = null;
+    this.hasNotifiedConfiguration = false;
     this.updater = new cron.CronJob({
       cronTime: this.schedule,
       onTick: () => {
@@ -94,11 +95,36 @@ class NatureRemoAircon {
         this.log(`Target aircon: ${JSON.stringify(appliance)}`);
         this.record = appliance;
         this.appliance_id = appliance.id;  // persist discovered ID
+        this._notifyConfigurationIfNeeded();
         this._notifyLatestValues();
       } else {
         this.log('Target aircon could not be found. You can leave `appliance_id` blank to automatically use the first aircon.');
       }
     });
+  }
+
+  _notifyConfigurationIfNeeded() {
+    if (this.hasNotifiedConfiguration) {
+      return;
+    }
+
+    const props = {
+      maxValue: this.getMaxTargetTemperature(),
+      minValue: this.getMinTargetTemperature(),
+      minStep: this.getTargetTemperatureStep(),
+    };
+
+    this.log(`notifying TargetTemperature props: ${JSON.stringify(props)}`);
+
+    // We cannot set these props in getServices() for the reasons:
+    // * getServices() is invoked at the initialization of this accessary.
+    // * The props are fetched via Nature API asynchronously.
+    this.service.getCharacteristic(hap.Characteristic.TargetTemperature).setProps(props)
+
+    // This is needed to notify homebridge of the change.
+    this.service.emit('service-configurationChange', { service: this.service });
+
+    this.hasNotifiedConfiguration = true;
   }
 
   _notifyLatestValues() {
@@ -229,6 +255,32 @@ class NatureRemoAircon {
 
     this.service = aircon;
     return [aircon];
+  }
+
+  getTargetTemperatureStep() {
+    const modes = this.record.aircon.range.modes;
+    const temperatures = Object.values(modes)[0].temp.map(string => parseInt(string)).sort();
+    return temperatures[1] - temperatures[0];
+  }
+
+  getMinTargetTemperature() {
+    return Math.min(...this.getAllTemperatures());
+  }
+
+  getMaxTargetTemperature() {
+    return Math.max(...this.getAllTemperatures());
+  }
+
+  getAllTemperatures() {
+    let allTemperatures = [];
+    const modes = this.record.aircon.range.modes;
+
+    for (const mode of Object.values(modes)) {
+      const temperatures = mode.temp.map(string => parseInt(string));
+      allTemperatures = allTemperatures.concat(temperatures);
+    }
+
+    return allTemperatures;
   }
 
 }  // class NatureRemoAircon
