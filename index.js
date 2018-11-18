@@ -275,8 +275,11 @@ class NatureRemoAircon {
     let allTemperatures = [];
     const modes = this.record.aircon.range.modes;
 
-    for (const mode of Object.values(modes)) {
-      const temperatures = mode.temp.map(string => parseInt(string));
+    for (const mode in modes) {
+      if (! (mode === 'cool' || mode === 'warm')) {
+        continue;
+      }
+      const temperatures = modes[mode].temp.filter(t => t.match(/^\d+(\.\d+)?$/)).map(t => parseInt(t));
       allTemperatures = allTemperatures.concat(temperatures);
     }
 
