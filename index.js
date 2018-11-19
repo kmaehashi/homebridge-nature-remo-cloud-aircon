@@ -87,12 +87,15 @@ class NatureRemoAircon {
           return app.id === this.appliance_id;
         });
       } else {
-        appliance = json.find((app, i) => {
-          return app.aircon !== null;
-        });
+        appliance = json.filter(app => {
+          if (app.aircon !== null) {
+            this.log(`Discovered aircon: ${app.id}: ${JSON.stringify(app)}`);
+            return true;
+          }
+        })[0];
       }
       if (appliance) {
-        this.log(`Target aircon: ${JSON.stringify(appliance)}`);
+        this.log(`Target aircon ID: ${appliance.id}`);
         this.record = appliance;
         this.appliance_id = appliance.id;  // persist discovered ID
         this._notifyConfigurationIfNeeded();
