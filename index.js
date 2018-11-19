@@ -47,13 +47,19 @@ class NatureRemoAircon {
     );
     request(options, (error, response, body) => {
       this.log('got reponse for update');
-      let json = JSON.parse(body);
-      if (error || json === null) {
+      if (error || body === null) {
         this.log(`failed to update: ${error}, ${body}`);
         callback('failed to update');
-        return
-      } else if ('code' in json) {
-        // e.g., unsupported temperature
+        return;
+      }
+      let json;
+      try {
+        json = JSON.parse(body);
+      } catch (e) {
+        json = null;
+      }
+      if (json === null || 'code' in json) {
+        // 'code' is returned when e.g., unsupported temperature or mode
         this.log(`server returned error: ${body}`);
         callback('server returned error');
         return
@@ -72,12 +78,17 @@ class NatureRemoAircon {
     });
 
     request(options, (error, response, body) => {
-      if (error) {
+      if (error || body === null) {
         this.log(`failed to refresh target appliance record: ${error}`);
         return;
       }
-      const json = JSON.parse(body);
-      if (!json) {
+      let json;
+      try {
+        json = JSON.parse(body);
+      } catch (e) {
+        json = null;
+      }
+      if (json === null || 'code' in json) {
         this.log(`failed to parse response: ${body}`);
         return;
       }
