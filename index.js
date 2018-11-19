@@ -25,6 +25,7 @@ class NatureRemoAircon {
 
     this.service = null;
     this.record = null;
+    this.hasNotifiedConfiguration = false;
     this.updater = new cron.CronJob({
       cronTime: this.schedule,
       onTick: () => {
@@ -94,11 +95,36 @@ class NatureRemoAircon {
         this.log(`Target aircon: ${JSON.stringify(appliance)}`);
         this.record = appliance;
         this.appliance_id = appliance.id;  // persist discovered ID
+        this._notifyConfigurationIfNeeded();
         this._notifyLatestValues();
       } else {
         this.log('Target aircon could not be found. You can leave `appliance_id` blank to automatically use the first aircon.');
       }
     });
+  }
+
+  _notifyConfigurationIfNeeded() {
+    if (this.hasNotifiedConfiguration) {
+      return;
+    }
+
+    const props = {
+      maxValue: this.getMaxTargetTemperature(),
+      minValue: this.getMinTargetTemperature(),
+      minStep: this.getTargetTemperatureStep(),
+    };
+
+    this.log(`notifying TargetTemperature props: ${JSON.stringify(props)}`);
+
+    // We cannot set these props in getServices() for the reasons:
+    // * getServices() is invoked at the initialization of this accessary.
+    // * The props are fetched via Nature API asynchronously.
+    this.service.getCharacteristic(hap.Characteristic.TargetTemperature).setProps(props)
+
+    // This is needed to notify homebridge of the change.
+    this.service.emit('service-configurationChange', { service: this.service });
+
+    this.hasNotifiedConfiguration = true;
   }
 
   _notifyLatestValues() {
@@ -229,6 +255,40 @@ class NatureRemoAircon {
 
     this.service = aircon;
     return [aircon];
+  }
+
+  getTargetTemperatureStep() {
+    const v = Math.min(...this._getAllTemperatures().sort().map(
+        (_, i, temp) => i === 0 ? 0 : temp[i] - temp[i-1]).filter(
+        x => x > 0));
+    return isNaN(v) ? 1.0 : v;
+  }
+
+  getMinTargetTemperature() {
+    const v = Math.min(...this._getAllTemperatures());
+    return isNaN(v) ? 10.0 : v;
+  }
+
+  getMaxTargetTemperature() {
+    const v = Math.max(...this._getAllTemperatures());
+    return isNaN(v) ? 122.0 : v;
+  }
+
+  _getAllTemperatures() {
+    // Returns the list of all possible temperatures for cool/warm mode.
+    // Note that the returned list may contain duplicates.
+    let allTemperatures = [];
+    const modes = this.record.aircon.range.modes;
+
+    for (const mode in modes) {
+      if (! (mode === 'cool' || mode === 'warm')) {
+        continue;
+      }
+      const temperatures = modes[mode].temp.filter(t => t.match(/^\d+(\.\d+)?$/)).map(t => parseInt(t));
+      allTemperatures = allTemperatures.concat(temperatures);
+    }
+
+    return allTemperatures;
   }
 
 }  // class NatureRemoAircon
