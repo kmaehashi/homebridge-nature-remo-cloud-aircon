@@ -258,20 +258,25 @@ class NatureRemoAircon {
   }
 
   getTargetTemperatureStep() {
-    const modes = this.record.aircon.range.modes;
-    const temperatures = Object.values(modes)[0].temp.map(string => parseInt(string)).sort();
-    return temperatures[1] - temperatures[0];
+    const v = Math.min(...this._getAllTemperatures().sort().map(
+        (_, i, temp) => i === 0 ? 0 : temp[i] - temp[i-1]).filter(
+        x => x > 0));
+    return isNaN(v) ? 1.0 : v;
   }
 
   getMinTargetTemperature() {
-    return Math.min(...this.getAllTemperatures());
+    const v = Math.min(...this._getAllTemperatures());
+    return isNaN(v) ? 10.0 : v;
   }
 
   getMaxTargetTemperature() {
-    return Math.max(...this.getAllTemperatures());
+    const v = Math.max(...this._getAllTemperatures());
+    return isNaN(v) ? 122.0 : v;
   }
 
-  getAllTemperatures() {
+  _getAllTemperatures() {
+    // Returns the list of all possible temperatures for cool/warm mode.
+    // Note that the returned list may contain duplicates.
     let allTemperatures = [];
     const modes = this.record.aircon.range.modes;
 
