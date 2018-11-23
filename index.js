@@ -25,6 +25,7 @@ class NatureRemoAircon {
 
     this.service = null;
     this.record = null;
+    this.temperature = 0.0;
     this.hasNotifiedConfiguration = false;
     this.updater = new cron.CronJob({
       cronTime: this.schedule,
@@ -109,11 +110,48 @@ class NatureRemoAircon {
         this.log(`Target aircon ID: ${appliance.id}`);
         this.record = appliance;
         this.appliance_id = appliance.id;  // persist discovered ID
+        this._refreshTemperature();
         this._notifyConfigurationIfNeeded();
         this._notifyLatestValues();
       } else {
         this.log('Target aircon could not be found. You can leave `appliance_id` blank to automatically use the first aircon.');
       }
+    });
+  }
+
+  _refreshTemperature() {
+    if (this.record === null) {
+      this.log('The aircon record is not available yet');
+      return;
+    }
+
+    this.log('refreshing temperature record');
+    const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
+      uri: '/devices',
+      headers: {'authorization': `Bearer ${this.access_token}`}
+    });
+
+    request(options, (error, response, body) => {
+      if (error || body === null) {
+        this.log(`failed to refresh temperature record: ${error}`);
+        return;
+      }
+      let json;
+      try {
+        json = JSON.parse(body);
+      } catch (e) {
+        json = null;
+      }
+      if (json === null || 'code' in json) {
+        this.log(`failed to parse response of devices: ${body}`);
+        return;
+      }
+      const device = json.find(dev => {
+        return dev.id === this.record.device.id;
+      });
+      this.temperature = device.newest_events.te.val;
+      this.log(`Temperature: ${this.temperature}`);
+      this._notifyLatestValues();
     });
   }
 
@@ -158,7 +196,7 @@ class NatureRemoAircon {
       .updateValue(this._translateHeatingCoolingState(settings));
     aircon
       .getCharacteristic(hap.Characteristic.CurrentTemperature)
-      .updateValue(settings.temp);  // TODO use sensor value
+      .updateValue(this.temperature);
     aircon
       .getCharacteristic(hap.Characteristic.TargetTemperature)
       .updateValue(settings.temp);
@@ -213,8 +251,7 @@ class NatureRemoAircon {
   }
 
   getCurrentTemperature(callback) {
-    /* TODO use sensor value */
-    this.getTargetTemperature(callback);
+    callback(null, this.temperature);
   }
 
   getTargetTemperature(callback) {
