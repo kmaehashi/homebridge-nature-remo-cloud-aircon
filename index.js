@@ -171,6 +171,8 @@ class NatureRemoAircon {
       return 1;
     } else if (settings.mode === 'cool') {
       return 2;
+    } else if (settings.mode === 'auto') {
+      return 3;
     }
     return null;
   }
