@@ -334,7 +334,7 @@ class NatureRemoAircon {
     const modes = this.record.aircon.range.modes;
 
     for (const mode in modes) {
-      if (! (mode === 'cool' || mode === 'warm')) {
+      if (! (mode === 'cool' || mode === 'warm' || mode === 'auto')) {
         continue;
       }
       const temperatures = modes[mode].temp.filter(t => t.match(/^\d+(\.\d+)?$/)).map(t => parseInt(t));
