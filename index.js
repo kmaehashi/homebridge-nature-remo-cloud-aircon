@@ -240,8 +240,17 @@ class NatureRemoAircon {
       params.operation_mode = 'cool';
     } else if (value == 3) {
       // auto
-      params.button = '';
-      params.operation_mode = 'auto';
+      if ('auto' in this.record.aircon.range.modes) {
+        params.button = '';
+        params.operation_mode = 'auto';
+      } else {
+        // Auto mode is not supported by this aircon.
+        // Use the current mode instead.
+        const mode = this.record.settings.mode;
+        this.log(`auto mode is not supported; using last mode: ${mode}`)
+        params.button = '';
+        params.operation_mode = mode;
+      }
     } else {
       this.log(`unexpected heating cooling state value: ${value}`)
       callback('assertion error');
