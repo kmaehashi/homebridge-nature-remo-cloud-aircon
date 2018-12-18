@@ -275,25 +275,34 @@ class NatureRemoAircon {
     this._updateTargetAppliance(params, callback);
   }
 
+  _translateTemperatureDisplayUnits(record) {
+    if (record.aircon.tempUnit === 'c') {
+      return 0;
+    } else if (record.aircon.tempUnit === 'f') {
+      return 1;
+    }
+    return null;
+  }
+
   getTemperatureDisplayUnits(callback) {
-    if (this.record.aircon.tempUnit === 'c') {
-      callback(null, 0);
-    } else if (this.record.aircon.tempUnit === 'f') {
-      callback(null, 1);
-    } else {
+    const currentUnit = this._translateTemperatureDisplayUnits(this.record);
+    if (currentUnit === null) {
       callback('assertion error');
+    } else {
+      callback(null, currentUnit);
     }
   }
 
   setTemperatureDisplayUnits(value, callback) {
-    if (value === 0) {  // C
-      callback();
-    } else if (value === 1) {  // F
-      this.log('temperature display unit cannot be set')
-      callback('unsupportred operation');
-    } else {
-      this.log(`unexpected temperature display unit value: ${value}`)
+    const currentUnit = this._translateTemperatureDisplayUnits(this.record);
+    if (currentUnit === null) {
       callback('assertion error');
+    } else if (value === currentUnit) {
+      // No changes.
+      callback();
+    } else {
+      this.log(`temperature display unit cannot be changed from ${currentUnit} to ${value}`)
+      callback('unsupportred operation');
     }
   }
 
