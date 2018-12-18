@@ -259,7 +259,10 @@ class NatureRemoAircon {
   }
 
   setTargetTemperature(value, callback) {
-    const params = {'temperature': value.toString()}
+    const params = {
+        'temperature': value.toString(),
+        'button': this.record.settings.button,
+    };
     this._updateTargetAppliance(params, callback);
   }
 
