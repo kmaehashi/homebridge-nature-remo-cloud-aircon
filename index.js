@@ -44,10 +44,11 @@ class NatureRemoAircon {
     if (!this.requestPromise) {
       this.requestPromise = new Promise((resolve, reject) => {
         setTimeout(() => {
+          this.requestParams = Object.assign({'button': this.record.settings.button}, this.requestParams);
+
           this.log(`request to server: ${JSON.stringify(this.requestParams)}`);
-          const options = Object.assign({
-            'button': this.record.settings.button
-          }, DEFAULT_REQUEST_OPTIONS, {
+
+          const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
             uri: `/appliances/${this.record.id}/aircon_settings`,
             headers: {'authorization': `Bearer ${this.access_token}`},
             method: 'POST',
