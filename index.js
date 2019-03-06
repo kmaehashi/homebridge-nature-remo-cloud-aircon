@@ -38,37 +38,56 @@ class NatureRemoAircon {
   }
 
   _updateTargetAppliance(params, callback) {
-    this.log('making request for update');
-    const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
-        uri: `/appliances/${this.record.id}/aircon_settings`,
-        headers: {'authorization': `Bearer ${this.access_token}`},
-        method: 'POST',
-        form: params
-      }
-    );
-    request(options, (error, response, body) => {
-      this.log('got reponse for update');
-      if (error || body === null) {
-        this.log(`failed to update: ${error}, ${body}`);
-        callback('failed to update');
-        return;
-      }
-      let json;
-      try {
-        json = JSON.parse(body);
-      } catch (e) {
-        json = null;
-      }
-      if (json === null || 'code' in json) {
-        // 'code' is returned when e.g., unsupported temperature or mode
-        this.log(`server returned error: ${body}`);
-        callback('server returned error');
-        return
-      }
+    this.log(`making request for update: ${JSON.stringify(params)}`);
+    this.requestParams = Object.assign({}, this.requestParams, params);
+
+    if (!this.requestPromise) {
+      this.requestPromise = new Promise((resolve, reject) => {
+        setTimeout(() => {
+          this.requestParams = Object.assign({'button': this.record.settings.button}, this.requestParams);
+
+          this.log(`request to server: ${JSON.stringify(this.requestParams)}`);
+
+          const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
+            uri: `/appliances/${this.record.id}/aircon_settings`,
+            headers: {'authorization': `Bearer ${this.access_token}`},
+            method: 'POST',
+            form: this.requestParams
+          });
+          request(options, (error, response, body) => {
+            this.log('got reponse for update');
+            if (error || body === null) {
+              this.log(`failed to update: ${error}, ${body}`);
+              reject('failed to update');
+              return;
+            }
+            let json;
+            try {
+              json = JSON.parse(body);
+            } catch (e) {
+              json = null;
+            }
+            if (json === null || 'code' in json) {
+              // 'code' is returned when e.g., unsupported temperature or mode
+              this.log(`server returned error: ${body}`);
+              reject('server returned error');
+              return;
+            }
+            resolve(json)
+          });
+          delete this.requestPromise
+          delete this.requestParams
+        }, 100)
+      });
+    }
+
+    this.requestPromise.then((json) => {
       this.record.settings = json;
       this._notifyLatestValues();
       callback();
-    });
+    }).catch((reason) => {
+      callback(reason)
+    })
   }
 
   _refreshTargetAppliance() {
@@ -264,13 +283,16 @@ class NatureRemoAircon {
   }
 
   getTargetTemperature(callback) {
-    callback(null, this.record.settings.temp);
+    if (!this.record.settings || !this.record.settings.temp) {
+      callback('assertion error');
+    } else {
+      callback(null, this.record.settings.temp);
+    }
   }
 
   setTargetTemperature(value, callback) {
     const params = {
-        'temperature': value.toString(),
-        'button': this.record.settings.button,
+        'temperature': value.toString()
     };
     this._updateTargetAppliance(params, callback);
   }
