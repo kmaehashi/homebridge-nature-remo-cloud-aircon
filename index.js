@@ -362,12 +362,12 @@ class NatureRemoAircon {
 
   getMinTargetTemperature() {
     const v = Math.min(...this._getAllTemperatures());
-    return isNaN(v) ? 10.0 : v;
+    return isNaN(v) ? 15.0 : v;
   }
 
   getMaxTargetTemperature() {
     const v = Math.max(...this._getAllTemperatures());
-    return isNaN(v) ? 122.0 : v;
+    return isNaN(v) ? 32.0 : v;
   }
 
   _getAllTemperatures() {
