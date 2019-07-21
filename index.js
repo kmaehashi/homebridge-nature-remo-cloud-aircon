@@ -25,7 +25,7 @@ class NatureRemoAircon {
 
     this.service = null;
     this.record = null;
-    this.temperature = 0.0;
+    this.temperature = 25.0;
     this.hasNotifiedConfiguration = false;
     this.updater = new cron.CronJob({
       cronTime: this.schedule,
