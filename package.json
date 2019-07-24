@@ -1,6 +1,6 @@
 {
-  "name": "homebridge-nature-remo-aircon",
-  "version": "1.0.0",
+  "name": "homebridge-nature-remo-cloud-aircon",
+  "version": "0.0.1",
   "description": "Homebridge Plug-in for Air Conditioner Managed by Nature Remo",
   "main": "index.js",
   "scripts": {
@@ -12,7 +12,9 @@
     "type": "git",
     "url": "https://github.com/kmaehashi/homebridge-nature-remo-aircon.git"
   },
-  "keywords": ["homebridge-plugin"],
+  "keywords": [
+    "homebridge-plugin"
+  ],
   "engines": {
     "node": ">=4.3.2",
     "homebridge": ">=0.2.0"
