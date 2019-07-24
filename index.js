@@ -14,10 +14,7 @@ module.exports = homebridge => {
 };
 
 class NatureRemoAircon {
-
   constructor(log, config) {
-    log('NatureRemoAircon init');
-
     this.log = log;
     this.appliance_id = config.appliance_id || null;
     this.access_token = config.access_token;
@@ -38,15 +35,12 @@ class NatureRemoAircon {
   }
 
   _updateTargetAppliance(params, callback) {
-    this.log(`making request for update: ${JSON.stringify(params)}`);
     this.requestParams = Object.assign({}, this.requestParams, params);
 
     if (!this.requestPromise) {
       this.requestPromise = new Promise((resolve, reject) => {
         setTimeout(() => {
           this.requestParams = Object.assign({'button': this.record.settings.button}, this.requestParams);
-
-          this.log(`request to server: ${JSON.stringify(this.requestParams)}`);
 
           const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
             uri: `/appliances/${this.record.id}/aircon_settings`,
@@ -55,10 +49,9 @@ class NatureRemoAircon {
             form: this.requestParams
           });
           request(options, (error, response, body) => {
-            this.log('got reponse for update');
             if (error || body === null) {
-              this.log(`failed to update: ${error}, ${body}`);
-              reject('failed to update');
+              this.log(`Failed to update: ${error}, ${body}`);
+              reject(error);
               return;
             }
             let json;
@@ -69,8 +62,8 @@ class NatureRemoAircon {
             }
             if (json === null || 'code' in json) {
               // 'code' is returned when e.g., unsupported temperature or mode
-              this.log(`server returned error: ${body}`);
-              reject('server returned error');
+              this.log(`Server returned error: ${body}`);
+              reject(body);
               return;
             }
             resolve(json)
@@ -91,7 +84,6 @@ class NatureRemoAircon {
   }
 
   _refreshTargetAppliance() {
-    this.log('refreshing target appliance record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/appliances',
       headers: {'authorization': `Bearer ${this.access_token}`}
@@ -99,7 +91,7 @@ class NatureRemoAircon {
 
     request(options, (error, response, body) => {
       if (error || body === null) {
-        this.log(`failed to refresh target appliance record: ${error}`);
+        this.log(`Failed to refresh target appliance record: ${error}`);
         return;
       }
       let json;
@@ -109,7 +101,7 @@ class NatureRemoAircon {
         json = null;
       }
       if (json === null || 'code' in json) {
-        this.log(`failed to parse response: ${body}`);
+        this.log(`Failed to parse response: ${body}`);
         return;
       }
       let appliance;
@@ -126,7 +118,6 @@ class NatureRemoAircon {
         })[0];
       }
       if (appliance) {
-        this.log(`Target aircon ID: ${appliance.id}`);
         this.record = appliance;
         this.appliance_id = appliance.id;  // persist discovered ID
         this._refreshTemperature();
@@ -144,7 +135,6 @@ class NatureRemoAircon {
       return;
     }
 
-    this.log('refreshing temperature record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/devices',
       headers: {'authorization': `Bearer ${this.access_token}`}
@@ -152,7 +142,7 @@ class NatureRemoAircon {
 
     request(options, (error, response, body) => {
       if (error || body === null) {
-        this.log(`failed to refresh temperature record: ${error}`);
+        this.log(`Failed to refresh temperature record: ${error}`);
         return;
       }
       let json;
@@ -162,14 +152,13 @@ class NatureRemoAircon {
         json = null;
       }
       if (json === null || 'code' in json) {
-        this.log(`failed to parse response of devices: ${body}`);
+        this.log(`Failed to parse response of devices: ${body}`);
         return;
       }
       const device = json.find(dev => {
         return dev.id === this.record.device.id;
       });
       this.temperature = device.newest_events.te.val;
-      this.log(`Temperature: ${this.temperature}`);
       this._notifyLatestValues();
     });
   }
@@ -184,8 +173,6 @@ class NatureRemoAircon {
       minValue: this.getMinTargetTemperature(),
       minStep: this.getTargetTemperatureStep(),
     };
-
-    this.log(`notifying TargetTemperature props: ${JSON.stringify(props)}`);
 
     // We cannot set these props in getServices() for the reasons:
     // * getServices() is invoked at the initialization of this accessary.
@@ -206,7 +193,6 @@ class NatureRemoAircon {
     }
 
     const settings = this.record.settings;
-    this.log(`notifying values: ${JSON.stringify(settings)}`);
     aircon
       .getCharacteristic(hap.Characteristic.CurrentHeatingCoolingState)
       .updateValue(this._translateHeatingCoolingState(settings));
@@ -266,12 +252,12 @@ class NatureRemoAircon {
         // Auto mode is not supported by this aircon.
         // Use the current mode instead.
         const mode = this.record.settings.mode;
-        this.log(`auto mode is not supported; using last mode: ${mode}`)
+        this.log(`Auto mode is not supported; using last mode: ${mode}`)
         params.button = '';
         params.operation_mode = mode;
       }
     } else {
-      this.log(`unexpected heating cooling state value: ${value}`)
+      this.log(`Unexpected heating cooling state value: ${value}`)
       callback('assertion error');
       return
     }
@@ -323,7 +309,7 @@ class NatureRemoAircon {
       // No changes.
       callback();
     } else {
-      this.log(`temperature display unit cannot be changed from ${currentUnit} to ${value}`)
+      this.log(`Temperature display unit cannot be changed from ${currentUnit} to ${value}`)
       callback('unsupportred operation');
     }
   }
