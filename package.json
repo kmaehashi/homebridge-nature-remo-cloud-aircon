@@ -1,6 +1,6 @@
 {
   "name": "homebridge-nature-remo-cloud-aircon",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Homebridge Plug-in for Air Conditioner Managed by Nature Remo",
   "main": "index.js",
   "scripts": {
