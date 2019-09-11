@@ -30,6 +30,7 @@ class NatureRemoAircon {
     this.appliance_id = config.appliance_id || null;
     this.access_token = config.access_token;
     this.schedule = config.schedule || '* * * * *';
+    this.skip_command_request_if_no_change = config.skip_command_request_if_no_change;
 
     this.service = null;
     this.record = null;
@@ -46,7 +47,7 @@ class NatureRemoAircon {
   }
 
   _updateTargetAppliance(params, callback) {
-    if (!this._willRequestChangeApplianceState(params)) {
+    if (this.skip_command_request_if_no_change && !this._willRequestChangeApplianceState(params)) {
       this.log(`skipping request for update since it won't change the appliance state: ${JSON.stringify(params)}`);
       callback();
       return;
