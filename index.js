@@ -6,6 +6,14 @@ const DEFAULT_REQUEST_OPTIONS = {
   method: 'GET'
 };
 
+const RESPONSE_KEYS_BY_REQUEST_KEY = {
+  'temperature': 'temp',
+  'operation_mode': 'mode',
+  'air_volume': 'vol',
+  'air_direction': 'dir',
+  'button': 'button'
+}
+
 let hap;
 
 module.exports = homebridge => {
@@ -38,6 +46,12 @@ class NatureRemoAircon {
   }
 
   _updateTargetAppliance(params, callback) {
+    if (!this._willRequestChangeApplianceState(params)) {
+      this.log(`skipping request for update since it won't change the appliance state: ${JSON.stringify(params)}`);
+      callback();
+      return;
+    }
+
     this.log(`making request for update: ${JSON.stringify(params)}`);
     this.requestParams = Object.assign({}, this.requestParams, params);
 
@@ -88,6 +102,24 @@ class NatureRemoAircon {
     }).catch((reason) => {
       callback(reason)
     })
+  }
+
+  _willRequestChangeApplianceState(requestParams) {
+    const currentState = this.record && this.record.settings;
+
+    if (!currentState) {
+      return true;
+    }
+
+    for (let requestKey of Object.keys(requestParams)) {
+      const requestValue = requestParams[requestKey];
+      const currentValue = currentState[RESPONSE_KEYS_BY_REQUEST_KEY[requestKey]];
+      if (requestValue !== currentValue) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   _refreshTargetAppliance() {
