@@ -26,6 +26,7 @@ class NatureRemoAircon {
     this.service = null;
     this.record = null;
     this.temperature = 0.0;
+    this.settings = null;
     this.hasNotifiedConfiguration = false;
     this.updater = new cron.CronJob({
       cronTime: this.schedule,
@@ -91,7 +92,7 @@ class NatureRemoAircon {
   }
 
   _refreshTargetAppliance() {
-    this.log('refreshing target appliance record');
+    this.log.debug('refreshing target appliance record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/appliances',
       headers: {'authorization': `Bearer ${this.access_token}`}
@@ -126,7 +127,9 @@ class NatureRemoAircon {
         })[0];
       }
       if (appliance) {
-        this.log(`Target aircon ID: ${appliance.id}`);
+        if (this.settings === null) {
+          this.log(`Target aircon ID: ${appliance.id}`);
+        }
         this.record = appliance;
         this.appliance_id = appliance.id;  // persist discovered ID
         this._refreshTemperature();
@@ -144,7 +147,7 @@ class NatureRemoAircon {
       return;
     }
 
-    this.log('refreshing temperature record');
+    this.log.debug('refreshing temperature record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/devices',
       headers: {'authorization': `Bearer ${this.access_token}`}
@@ -168,9 +171,11 @@ class NatureRemoAircon {
       const device = json.find(dev => {
         return dev.id === this.record.device.id;
       });
-      this.temperature = device.newest_events.te.val;
-      this.log(`Temperature: ${this.temperature}`);
-      this._notifyLatestValues();
+      if (this.temperature != device.newest_events.te.val) {
+        this.temperature = device.newest_events.te.val;
+        this.log(`Temperature: ${this.temperature}`);
+        this._notifyLatestValues();
+      }
     });
   }
 
@@ -206,19 +211,23 @@ class NatureRemoAircon {
     }
 
     const settings = this.record.settings;
-    this.log(`notifying values: ${JSON.stringify(settings)}`);
-    aircon
-      .getCharacteristic(hap.Characteristic.CurrentHeatingCoolingState)
-      .updateValue(this._translateHeatingCoolingState(settings));
-    aircon
-      .getCharacteristic(hap.Characteristic.TargetHeatingCoolingState)
-      .updateValue(this._translateHeatingCoolingState(settings));
-    aircon
-      .getCharacteristic(hap.Characteristic.CurrentTemperature)
-      .updateValue(this.temperature);
-    aircon
-      .getCharacteristic(hap.Characteristic.TargetTemperature)
-      .updateValue(settings.temp);
+    if (this.settings === null || this.settings.updated_at !== settings.updated_at) {
+      this.log(`notifying values: ${JSON.stringify(settings)}`);
+      aircon
+        .getCharacteristic(hap.Characteristic.CurrentHeatingCoolingState)
+        .updateValue(this._translateHeatingCoolingState(settings));
+      aircon
+        .getCharacteristic(hap.Characteristic.TargetHeatingCoolingState)
+        .updateValue(this._translateHeatingCoolingState(settings));
+      aircon
+        .getCharacteristic(hap.Characteristic.CurrentTemperature)
+        .updateValue(this.temperature);
+      aircon
+        .getCharacteristic(hap.Characteristic.TargetTemperature)
+        .updateValue(settings.temp);
+
+      this.settings = settings;
+    }
   }
 
   _translateHeatingCoolingState(settings) {
