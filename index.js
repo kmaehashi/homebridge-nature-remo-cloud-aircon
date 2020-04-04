@@ -26,16 +26,46 @@ class NatureRemoAircon {
   constructor(log, config) {
     log('NatureRemoAircon init');
 
+    // `log` is the logger for this service.
     this.log = log;
-    this.appliance_id = config.appliance_id || null;
+
+    // `access_token` is the token for the API.
+    // Users must specify it in the configuration (mandatory).
     this.access_token = config.access_token;
+
+    // `appliance_id` is the appliance ID of the aircon to be handled by this
+    // service.
+    // Users can specify the ID in the configuration.
+    // When it is left blank, this value will be filled during the first
+    // refresh. In that case, the first aircon is automatically selected.
+    this.appliance_id = config.appliance_id || null;
+
+    // `schedule` controls the update frequency of the latest aircon status
+    // (including temperature) from Nature Remo Cloud API. This operation is
+    // referred as "refresh".
+    // Users can specify the frequency in crontab format in the configuration.
+    // When left blank, the schedule will be "every minute".
     this.schedule = config.schedule || '* * * * *';
     this.skip_command_request_if_no_change = config.skip_command_request_if_no_change;
 
+    // `service` is the instance of this HomeBridge service.
     this.service = null;
+
+    // `record` is the object representing `Appliance` model.
+    // c.f. http://swagger.nature.global/#model-Appliance
+    // This value will be filled/updated by refresh.
     this.record = null;
+
+    // `temperature` is the temperature sensor value retrieved from the Remo.
+    // This value will be updated by refresh.
     this.temperature = 0.0;
+
+    // `hasNotifiedConfiguration` indicates that the characteristics of the
+    // aircon service (fetched from the API asynchronously) has been
+    // advertised.
     this.hasNotifiedConfiguration = false;
+
+    // Periodically refresh the target appliance information.
     this.updater = new cron.CronJob({
       cronTime: this.schedule,
       onTick: () => {
@@ -59,9 +89,10 @@ class NatureRemoAircon {
     if (!this.requestPromise) {
       this.requestPromise = new Promise((resolve, reject) => {
         setTimeout(() => {
+          // Use the current button state unless it is requested to be changed.
           this.requestParams = Object.assign({'button': this.record.settings.button}, this.requestParams);
 
-          this.log(`request to server: ${JSON.stringify(this.requestParams)}`);
+          this.log(`requesting update to server: ${JSON.stringify(this.requestParams)}`);
 
           const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
             uri: `/appliances/${this.record.id}/aircon_settings`,
@@ -147,10 +178,15 @@ class NatureRemoAircon {
       }
       let appliance;
       if (this.appliance_id) {
+        // Use the persisted appliance ID (i.e., ID discovered during the first
+        // refresh or ID specified in configuration by user).
         appliance = json.find((app, i) => {
           return app.id === this.appliance_id;
         });
       } else {
+        // ID not specified in configuration; automatically use the first
+        // aircon appliance.
+        // TODO: fix error if no aircon is registered.
         appliance = json.filter(app => {
           if (app.aircon !== null) {
             this.log(`Discovered aircon: ${app.id}: ${JSON.stringify(app)}`);
