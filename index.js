@@ -77,7 +77,7 @@ class NatureRemoAircon {
   }
 
   _updateTargetAppliance(params, callback) {
-    if (this.skip_command_request_if_no_change && !this._willRequestChangeApplianceState(params)) {
+    if (this.skip_command_request_if_no_change && !this._shouldUpdateApplianceState(params)) {
       this.log(`skipping request for update since it won't change the appliance state: ${JSON.stringify(params)}`);
       callback();
       return;
@@ -136,7 +136,9 @@ class NatureRemoAircon {
     })
   }
 
-  _willRequestChangeApplianceState(requestParams) {
+  _shouldUpdateApplianceState(requestParams) {
+    // Returns true if the state has been changed so that it should be
+    // notified to the cloud.
     const currentState = this.record && this.record.settings;
 
     if (!currentState) {
