@@ -46,7 +46,13 @@ class NatureRemoAircon {
     // Users can specify the frequency in crontab format in the configuration.
     // When left blank, the schedule will be "every minute".
     this.schedule = config.schedule || '* * * * *';
-    this.skip_command_request_if_no_change = config.skip_command_request_if_no_change;
+
+    // `skip_command_request_if_no_change` controls whether the update request
+    // should be sent to the cloud if no changes has been made. This option
+    // has been introduced for iOS 13 support; the Home app on iOS 13 always
+    // sends command requests to Homebridge every time opening a thermostat
+    // control panel even without actual user operations. (see #22 for details)
+    this.skip_command_request_if_no_change = config.skip_command_request_if_no_change || true;
 
     // `service` is the instance of this HomeBridge service.
     this.service = null;
