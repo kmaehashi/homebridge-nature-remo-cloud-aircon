@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-nature-remo-aircon",
+  "name": "homebridge-nature-remo-cloud-aircon",
   "version": "1.0.0",
   "description": "Homebridge Plug-in for Air Conditioner Managed by Nature Remo",
   "main": "index.js",
@@ -10,7 +10,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kmaehashi/homebridge-nature-remo-aircon.git"
+    "url": "https://github.com/japaniot/homebridge-nature-remo-cloud-aircon.git"
   },
   "keywords": ["homebridge-plugin"],
   "engines": {

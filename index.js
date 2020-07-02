@@ -10,17 +10,18 @@ let hap;
 
 module.exports = homebridge => {
   hap = homebridge.hap;
-  homebridge.registerAccessory('homebridge-nature-remo-aircon', 'NatureRemoAircon', NatureRemoAircon);
+  homebridge.registerAccessory('homebridge-nature-remo-cloud-aircon', 'NatureRemoCloudAircon', NatureRemoCloudAircon);
 };
 
-class NatureRemoAircon {
+class NatureRemoCloudAircon {
 
   constructor(log, config) {
-    log('NatureRemoAircon init');
+    log('NatureRemoCloudAircon init');
 
     this.log = log;
-    this.appliance_id = config.appliance_id || null;
-    this.access_token = config.access_token;
+    this.useDryForCool = config.useDryForCool || false;
+    this.applianceId = config.applianceId || null;
+    this.accessToken = config.accessToken;
     this.schedule = config.schedule || '* * * * *';
 
     this.service = null;
@@ -50,7 +51,7 @@ class NatureRemoAircon {
 
           const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
             uri: `/appliances/${this.record.id}/aircon_settings`,
-            headers: {'authorization': `Bearer ${this.access_token}`},
+            headers: {'authorization': `Bearer ${this.accessToken}`},
             method: 'POST',
             form: this.requestParams
           });
@@ -94,7 +95,7 @@ class NatureRemoAircon {
     this.log('refreshing target appliance record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/appliances',
-      headers: {'authorization': `Bearer ${this.access_token}`}
+      headers: {'authorization': `Bearer ${this.accessToken}`}
     });
 
     request(options, (error, response, body) => {
@@ -113,9 +114,9 @@ class NatureRemoAircon {
         return;
       }
       let appliance;
-      if (this.appliance_id) {
+      if (this.applianceId) {
         appliance = json.find((app, i) => {
-          return app.id === this.appliance_id;
+          return app.id === this.applianceId;
         });
       } else {
         appliance = json.filter(app => {
@@ -128,12 +129,12 @@ class NatureRemoAircon {
       if (appliance) {
         this.log(`Target aircon ID: ${appliance.id}`);
         this.record = appliance;
-        this.appliance_id = appliance.id;  // persist discovered ID
+        this.applianceId = appliance.id;  // persist discovered ID
         this._refreshTemperature();
         this._notifyConfigurationIfNeeded();
         this._notifyLatestValues();
       } else {
-        this.log('Target aircon could not be found. You can leave `appliance_id` blank to automatically use the first aircon.');
+        this.log('Target aircon could not be found. You can leave `applianceId` blank to automatically use the first aircon.');
       }
     });
   }
@@ -147,7 +148,7 @@ class NatureRemoAircon {
     this.log('refreshing temperature record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/devices',
-      headers: {'authorization': `Bearer ${this.access_token}`}
+      headers: {'authorization': `Bearer ${this.accessToken}`}
     });
 
     request(options, (error, response, body) => {
@@ -226,7 +227,8 @@ class NatureRemoAircon {
       return 0;
     } else if (settings.mode === 'warm') {
       return 1;
-    } else if (settings.mode === 'cool') {
+    } else if (settings.mode === 'cool' ||
+               settings.mode === 'dry') {
       return 2;
     } else if (settings.mode === 'auto') {
       return 3;
@@ -256,7 +258,7 @@ class NatureRemoAircon {
     } else if (value == 2) {
       // cool
       params.button = '';
-      params.operation_mode = 'cool';
+      params.operation_mode = this.useDryForCool ? 'dry' : 'cool';
     } else if (value == 3) {
       // auto
       if ('auto' in this.record.aircon.range.modes) {
@@ -377,7 +379,7 @@ class NatureRemoAircon {
     const modes = this.record.aircon.range.modes;
 
     for (const mode in modes) {
-      if (! (mode === 'cool' || mode === 'warm')) {
+      if (!(mode === 'cool' || mode === 'warm' || mode === 'dry')) {
         continue;
       }
       const temperatures = modes[mode].temp.filter(t => t.match(/^\d+(\.\d+)?$/)).map(t => parseInt(t));
@@ -387,4 +389,4 @@ class NatureRemoAircon {
     return allTemperatures;
   }
 
-}  // class NatureRemoAircon
+}  // class NatureRemoCloudAircon

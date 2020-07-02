@@ -1,4 +1,4 @@
-# homebridge-nature-remo-aircon
+# homebridge-nature-remo-cloud-aircon
 
 Homebridge Plug-in for Air Conditioner Managed by Nature Remo
 
@@ -11,8 +11,9 @@ Example:
   {
     "accessory": "NatureRemoAircon",
     "name": "Air Conditioner",
-    "access_token": "xxxxxxxxx_xxxxxxxxxxxxxxx_x_xxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "appliance_id": ""
+    "useDryForCool": false,
+    "accessToken": "xxxxxxxxx_xxxxxxxxxxxxxxx_x_xxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "applianceId": ""
   }
 ]
 
@@ -20,4 +21,5 @@ Example:
 ```
 
 * Please get your access token at https://home.nature.global/ and set it to `access_token`.
-* `appliance_id` can be left blank if you only have one aircon.
+* `applianceId` can be left blank if you only have one aircon.
+* `useDryForCool` can make map cool mode to dry mode in Home.
