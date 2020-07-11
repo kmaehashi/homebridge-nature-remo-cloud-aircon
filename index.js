@@ -84,12 +84,12 @@ class NatureRemoAircon {
 
   _updateTargetAppliance(params, callback) {
     if (this.skip_command_request_if_no_change && !this._shouldUpdateApplianceState(params)) {
-      this.log(`skipping request for update since it won't change the appliance state: ${JSON.stringify(params)}`);
+      this.log.deebug(`skipping request for update since it won't change the appliance state: ${JSON.stringify(params)}`);
       callback();
       return;
     }
 
-    this.log(`making request for update: ${JSON.stringify(params)}`);
+    this.log.debug(`making request for update: ${JSON.stringify(params)}`);
     this.requestParams = Object.assign({}, this.requestParams, params);
 
     if (!this.requestPromise) {
@@ -98,7 +98,7 @@ class NatureRemoAircon {
           // Use the current button state unless it is requested to be changed.
           this.requestParams = Object.assign({'button': this.record.settings.button}, this.requestParams);
 
-          this.log(`requesting update to server: ${JSON.stringify(this.requestParams)}`);
+          this.log.debug(`requesting update to server: ${JSON.stringify(this.requestParams)}`);
 
           const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
             uri: `/appliances/${this.record.id}/aircon_settings`,
@@ -107,7 +107,7 @@ class NatureRemoAircon {
             form: this.requestParams
           });
           request(options, (error, response, body) => {
-            this.log('got reponse for update');
+            this.log.debug('got reponse for update');
             if (error || body === null) {
               this.log(`failed to update: ${error}, ${body}`);
               reject('failed to update');
@@ -163,7 +163,7 @@ class NatureRemoAircon {
   }
 
   _refreshTargetAppliance() {
-    this.log('refreshing target appliance record');
+    this.log.debug('refreshing target appliance record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/appliances',
       headers: {'authorization': `Bearer ${this.access_token}`}
@@ -197,13 +197,13 @@ class NatureRemoAircon {
         // TODO: fix error if no aircon is registered.
         appliance = json.filter(app => {
           if (app.aircon !== null) {
-            this.log(`Discovered aircon: ${app.id}: ${JSON.stringify(app)}`);
+            this.log.debug(`Discovered aircon: ${app.id}: ${JSON.stringify(app)}`);
             return true;
           }
         })[0];
       }
       if (appliance) {
-        this.log(`Target aircon ID: ${appliance.id}`);
+        this.log.debug(`Target aircon ID: ${appliance.id}`);
         this.record = appliance;
         this.appliance_id = appliance.id;  // persist discovered ID
         this._refreshTemperature();
@@ -217,11 +217,11 @@ class NatureRemoAircon {
 
   _refreshTemperature() {
     if (this.record === null) {
-      this.log('The aircon record is not available yet');
+      this.log.debug('The aircon record is not available yet');
       return;
     }
 
-    this.log('refreshing temperature record');
+    this.log.debug('refreshing temperature record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/devices',
       headers: {'authorization': `Bearer ${this.access_token}`}
@@ -246,7 +246,7 @@ class NatureRemoAircon {
         return dev.id === this.record.device.id;
       });
       this.temperature = device.newest_events.te.val;
-      this.log(`Temperature: ${this.temperature}`);
+      this.log.debug(`room temperature: ${this.temperature}`);
       this._notifyLatestValues();
     });
   }
@@ -262,7 +262,7 @@ class NatureRemoAircon {
       minStep: this.getTargetTemperatureStep(),
     };
 
-    this.log(`notifying TargetTemperature props: ${JSON.stringify(props)}`);
+    this.log.debug(`notifying TargetTemperature props: ${JSON.stringify(props)}`);
 
     // We cannot set these props in getServices() for the reasons:
     // * getServices() is invoked at the initialization of this accessary.
@@ -283,7 +283,7 @@ class NatureRemoAircon {
     }
 
     const settings = this.record.settings;
-    this.log(`notifying values: ${JSON.stringify(settings)}`);
+    this.log.debug(`notifying values: ${JSON.stringify(settings)}`);
     aircon
       .getCharacteristic(hap.Characteristic.CurrentHeatingCoolingState)
       .updateValue(this._translateHeatingCoolingState(settings));
