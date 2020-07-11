@@ -18,7 +18,7 @@ let hap;
 
 module.exports = homebridge => {
   hap = homebridge.hap;
-  homebridge.registerAccessory('homebridge-nature-remo-aircon', 'NatureRemoAircon', NatureRemoAircon);
+  homebridge.registerAccessory('homebridge-nature-remo-cloud-aircon', 'NatureRemoAircon', NatureRemoAircon);
 };
 
 class NatureRemoAircon {
