@@ -84,7 +84,7 @@ class NatureRemoAircon {
 
   _updateTargetAppliance(params, callback) {
     if (this.skip_command_request_if_no_change && !this._shouldUpdateApplianceState(params)) {
-      this.log.deebug(`skipping request for update since it won't change the appliance state: ${JSON.stringify(params)}`);
+      this.log.debug(`skipping request for update since it won't change the appliance state: ${JSON.stringify(params)}`);
       callback();
       return;
     }
