@@ -1,5 +1,6 @@
 const request = require('request');
 const cron = require('cron');
+const EventEmitter = require('events');
 
 const DEFAULT_REQUEST_OPTIONS = {
   baseUrl: 'https://api.nature.global/1/',
@@ -15,6 +16,13 @@ const RESPONSE_KEYS_BY_REQUEST_KEY = {
 }
 
 let hap;
+
+// Singleton cron.CronJob that updates appliances and devices.
+let updater = null;
+
+// eventHandler emits events when updater has updated appliances and devices.
+const eventHandler = {};
+Object.assign(eventHandler, EventEmitter.prototype);
 
 module.exports = homebridge => {
   hap = homebridge.hap;
@@ -72,14 +80,55 @@ class NatureRemoAircon {
     this.hasNotifiedConfiguration = false;
 
     // Periodically refresh the target appliance information.
-    this.updater = new cron.CronJob({
-      cronTime: this.schedule,
-      onTick: () => {
-        this._refreshTargetAppliance();
-      },
-      runOnInit: true
+    if (! updater) {
+      updater = new cron.CronJob({
+        cronTime: this.schedule,
+        onTick: () => {
+          this._refreshTargetAppliance();
+        },
+        runOnInit: true
+      });
+      updater.start();
+    }
+
+    eventHandler.on('appliancesRefreshed', (json) => {
+      let appliance;
+      if (this.appliance_id) {
+        // Use the persisted appliance ID (i.e., ID discovered during the first
+        // refresh or ID specified in configuration by user).
+        appliance = json.find((app, i) => {
+          return app.id === this.appliance_id;
+        });
+      } else {
+        // ID not specified in configuration; automatically use the first
+        // aircon appliance.
+        // TODO: fix error if no aircon is registered.
+        appliance = json.filter(app => {
+          if (app.aircon !== null) {
+            this.log.debug(`Discovered aircon: ${app.id}: ${JSON.stringify(app)}`);
+            return true;
+          }
+        })[0];
+      }
+      if (appliance) {
+        this.log.debug(`Target aircon ID: ${appliance.id}`);
+        this.record = appliance;
+        this.appliance_id = appliance.id;  // persist discovered ID
+        this._notifyConfigurationIfNeeded();
+        this._notifyLatestValues();
+      } else {
+        this.log('Target aircon could not be found. You can leave `appliance_id` blank to automatically use the first aircon.');
+      }
     });
-    this.updater.start();
+
+    eventHandler.on('devicesRefreshed', (json) => {
+      const device = json.find(dev => {
+        return dev.id === this.record.device.id;
+      });
+      this.temperature = device.newest_events.te.val;
+      this.log.debug(`room temperature: ${this.temperature}`);
+      this._notifyLatestValues();
+    });
   }
 
   _updateTargetAppliance(params, callback) {
@@ -184,43 +233,13 @@ class NatureRemoAircon {
         this.log(`failed to parse response: ${body}`);
         return;
       }
-      let appliance;
-      if (this.appliance_id) {
-        // Use the persisted appliance ID (i.e., ID discovered during the first
-        // refresh or ID specified in configuration by user).
-        appliance = json.find((app, i) => {
-          return app.id === this.appliance_id;
-        });
-      } else {
-        // ID not specified in configuration; automatically use the first
-        // aircon appliance.
-        // TODO: fix error if no aircon is registered.
-        appliance = json.filter(app => {
-          if (app.aircon !== null) {
-            this.log.debug(`Discovered aircon: ${app.id}: ${JSON.stringify(app)}`);
-            return true;
-          }
-        })[0];
-      }
-      if (appliance) {
-        this.log.debug(`Target aircon ID: ${appliance.id}`);
-        this.record = appliance;
-        this.appliance_id = appliance.id;  // persist discovered ID
-        this._refreshTemperature();
-        this._notifyConfigurationIfNeeded();
-        this._notifyLatestValues();
-      } else {
-        this.log('Target aircon could not be found. You can leave `appliance_id` blank to automatically use the first aircon.');
-      }
+      eventHandler.emit('appliancesRefreshed', json);
+
+      this._refreshTemperature();
     });
   }
 
   _refreshTemperature() {
-    if (this.record === null) {
-      this.log.debug('The aircon record is not available yet');
-      return;
-    }
-
     this.log.debug('refreshing temperature record');
     const options = Object.assign({}, DEFAULT_REQUEST_OPTIONS, {
       uri: '/devices',
@@ -242,12 +261,7 @@ class NatureRemoAircon {
         this.log(`failed to parse response of devices: ${body}`);
         return;
       }
-      const device = json.find(dev => {
-        return dev.id === this.record.device.id;
-      });
-      this.temperature = device.newest_events.te.val;
-      this.log.debug(`room temperature: ${this.temperature}`);
-      this._notifyLatestValues();
+      eventHandler.emit('devicesRefreshed', json);
     });
   }
 
