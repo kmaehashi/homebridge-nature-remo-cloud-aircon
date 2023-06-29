@@ -471,7 +471,7 @@ class NatureRemoAircon {
       if (! (mode === 'cool' || mode === 'warm')) {
         continue;
       }
-      const temperatures = modes[mode].temp.filter(t => t.match(/^\d+(\.\d+)?$/)).map(t => parseInt(t));
+      const temperatures = modes[mode].temp.filter(t => t.match(/^\d+(\.\d+)?$/)).map(t => parseFloat(t));
       allTemperatures = allTemperatures.concat(temperatures);
     }
 
